@@ -1,0 +1,22 @@
+services:
+  pihole-mcp:
+    image: ghcr.io/basalto/pihole-mcp-server:latest
+    networks:
+      - hostnet
+    environment:
+      FASTMCP_TRANSPORT: streamable-http
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: "3100"
+      PIHOLE_URL: ${PIHOLE_URL:-http://127.0.0.1:8080}
+      PIHOLE_API_PASSWORD: ${PIHOLE_API_PASSWORD}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+      PIHOLE_REQUEST_TIMEOUT: ${PIHOLE_REQUEST_TIMEOUT:-15}
+      PIHOLE_LOG_LEVEL: ${PIHOLE_LOG_LEVEL:-INFO}
+    deploy:
+      restart_policy:
+        condition: any
+
+networks:
+  hostnet:
+    external: true
+    name: host
