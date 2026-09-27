@@ -173,13 +173,13 @@ async def get_queries(
 
     Args:
         length: Maximum number of queries to return (default 50).
-        client_filter: Client IP or name to filter on.
+        client_filter: Client IP to filter on (e.g. "192.168.5.39").
         domain: Exact domain match; supports "*" wildcards (e.g. "*tiktok*").
         status: GRAVITY, REGEX, FORWARDED, CACHE, CACHE_STALE, IN_PROGRESS,
             SPECIAL_DOMAIN, or UNKNOWN. (v6 has no "BLOCKED" — blocked queries
             are GRAVITY or REGEX.)
         type: DNS record type (A, AAAA, CNAME, ...).
-        upstream: Upstream resolver IP to filter on.
+        upstream: Upstream resolver as "IP#port" (e.g. "192.168.1.93#53").
         from_timestamp: Earliest query time (Unix epoch seconds).
         until_timestamp: Latest query time (Unix epoch seconds).
 

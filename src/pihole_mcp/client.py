@@ -143,19 +143,20 @@ class PiHoleClient:
         """Fetch recent DNS queries.
 
         Filters (all optional, combined with AND by the server):
-            client:   client IP or name (e.g. "192.168.5.39")
+            client:   client IP (e.g. "192.168.5.39")
             domain:   exact domain match; supports "*" wildcards (e.g. "*tiktok*")
             status:   GRAVITY, REGEX, FORWARDED, CACHE, CACHE_STALE, IN_PROGRESS,
                       SPECIAL_DOMAIN, UNKNOWN (v6 has no "BLOCKED" status — blocked
                       queries surface as GRAVITY or REGEX)
             type:     DNS record type (A, AAAA, CNAME, ...)
-            upstream: upstream resolver IP
+            upstream: upstream resolver as "IP#port" (e.g. "192.168.1.93#53") —
+                      the plain IP alone returns nothing
             from_:    earliest timestamp (Unix epoch seconds)
             until:    latest timestamp (Unix epoch seconds)
         """
         params: dict[str, Any] = {"length": length}
         if client:
-            params["client"] = client
+            params["client_ip"] = client
         if domain:
             params["domain"] = domain
         if status:

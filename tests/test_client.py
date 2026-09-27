@@ -129,7 +129,7 @@ async def test_queries_builds_filter_params(client, mocker):
     _, kwargs = client._client.request.await_args
     assert kwargs["params"] == {
         "length": 10,
-        "client": "192.168.5.39",
+        "client_ip": "192.168.5.39",
         "domain": "*tiktok*",
         "status": "GRAVITY",
         "type": "A",
