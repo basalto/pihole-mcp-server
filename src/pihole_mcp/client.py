@@ -42,7 +42,28 @@ class PiHoleClient:
         await self.aclose()
 
     async def aclose(self) -> None:
+        await self.logout()
         await self._client.aclose()
+
+    async def logout(self) -> None:
+        """Release the current session via DELETE /api/auth (best-effort).
+
+        Pi-hole v6 caps concurrent sessions (max_sessions). Leaving a session
+        open leaks a seat for up to the session timeout; releasing it on close
+        prevents "API seats exceeded" (HTTP 429) after repeated tool calls.
+        """
+        if not self._sid:
+            return
+        try:
+            await self._client.request(
+                "DELETE",
+                f"{self.base_url}/api/auth",
+                headers={"X-FTL-SID": self._sid},
+            )
+        except Exception:  # noqa: BLE001 - logout is best-effort
+            pass
+        finally:
+            self._sid = None
 
     async def authenticate(self) -> str:
         """Authenticate against /api/auth and cache the session ID.

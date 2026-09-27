@@ -143,3 +143,26 @@ async def test_info_rejects_unknown_section(client, mocker):
     client._sid = "abc123"
     with pytest.raises(PiHoleError, match="Unknown info section"):
         await client.info("bogus")
+
+
+async def test_logout_calls_delete_and_clears_sid(client, mocker):
+    client._sid = "abc123"
+    mocker.patch.object(client._client, "request", new=mocker.AsyncMock())
+
+    await client.logout()
+
+    client._client.request.assert_awaited_once_with(
+        "DELETE",
+        "http://localhost:8080/api/auth",
+        headers={"X-FTL-SID": "abc123"},
+    )
+    assert client._sid is None
+
+
+async def test_logout_noop_without_sid(client, mocker):
+    client._sid = None
+    mocker.patch.object(client._client, "request", new=mocker.AsyncMock())
+
+    await client.logout()
+
+    client._client.request.assert_not_called()
