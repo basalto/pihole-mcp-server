@@ -1,18 +1,15 @@
 """Configuration management for Pi-hole MCP Server using Pydantic Settings."""
 
+from basalto_mcp import MCPBaseSettings
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables and .env file."""
+class Settings(MCPBaseSettings):
+    """Application settings loaded from environment variables and .env file.
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
+    Inherits ``.env`` loading, case-insensitivity, and the optional
+    ``mcp_auth_token`` (``MCP_AUTH_TOKEN``) from :class:`MCPBaseSettings`.
+    """
 
     pihole_url: str = Field(
         default="http://localhost:8080",
@@ -24,12 +21,6 @@ class Settings(BaseSettings):
         default="",
         description="Pi-hole v6 API password (FTLCONF_webserver_api_password)",
         validation_alias="PIHOLE_API_PASSWORD",
-    )
-
-    mcp_auth_token: str | None = Field(
-        default=None,
-        description="Optional bearer token required on HTTP transports",
-        validation_alias="MCP_AUTH_TOKEN",
     )
 
     request_timeout: float = Field(

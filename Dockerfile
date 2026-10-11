@@ -14,7 +14,8 @@ RUN apk add --no-cache --virtual .build-deps \
     libffi-dev \
     openssl-dev \
     cargo \
-    rust
+    rust \
+    git
 
 RUN pip install uv
 

@@ -21,6 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "basalto-mcp @ git+https://github.com/basalto/mcp-common@v0.1.0",
     "fastmcp>=3.1.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
@@ -50,6 +51,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pihole_mcp"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.black]
 line-length = 100
