@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.metadata
 from typing import Any
 
+import httpx
 from basalto_mcp import make_auth, serve
 from fastmcp import FastMCP
 
@@ -217,6 +218,114 @@ async def get_history(length: int = 100) -> dict[str, Any]:
         return await client.history(length=length)
     finally:
         await client.aclose()
+
+
+# ---------------------------------------------------------------------------
+# Calling-home / beacon analysis (pihole-beacon-api sidecar over the FTL DB)
+# ---------------------------------------------------------------------------
+#
+# The v6 API's /api/queries only serves the in-memory window (~18h), so
+# per-client, per-domain history over weeks is read from the FTL long-term
+# SQLite DB by the pihole-beacon-api sidecar (PIHOLE_BEACON_URL) and exposed
+# as these two tools. Coverage caveat: only clients that use Pi-hole as DNS #1
+# (the IoT VLAN, 192.168.5.0/25) appear here — infra/VMs resolve via BIND
+# directly and never show up.
+
+
+async def _beacon_get(path: str, **params: Any) -> Any:
+    """GET from the beacon sidecar, raising a clean error on failure."""
+    if not settings.beacon_url:
+        raise RuntimeError(
+            "beacon analysis is not configured (PIHOLE_BEACON_URL is unset). "
+            "The pihole-beacon-api sidecar must be running on the Pi-hole host."
+        )
+    base = settings.beacon_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=60.0) as http:
+        resp = await http.get(
+            f"{base}{path}",
+            params={k: v for k, v in params.items() if v is not None},
+        )
+    if resp.status_code != 200:
+        raise RuntimeError(f"beacon-api error {resp.status_code}: {resp.text[:300]}")
+    return resp.json()
+
+
+@mcp.tool()
+async def get_dns_beacons(
+    days: int = 30,
+    min_count: int = 10,
+    min_span_days: float = 1.0,
+    client_ip: str | None = None,
+    domain: str | None = None,
+    blocked_only: bool = False,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Ranked calling-home / periodic-beacon (client, domain) pairs over weeks.
+
+    THE tool for "which IoT device keeps phoning home to domain X, and how
+    regularly". Aggregates the Pi-hole FTL long-term query log (up to 91 days)
+    per (client, domain) pair and returns, for each: total query count, how
+    many were blocked vs allowed, first/last seen, span in days, presence ratio
+    (fraction of the span's hours with at least one query — a high ratio with
+    steady traffic is a persistent beacon), and median/min/max inter-query gap
+    seconds (the cadence). Sorted by count, then span.
+
+    Note: only clients that use Pi-hole as their resolver appear (the IoT VLAN
+    at this homelab). Infra/VMs resolve via BIND and are invisible here — use
+    the unifi-mcp flow tools for those.
+
+    Args:
+        days: Lookback window in days (1-91, default 30).
+        min_count: Only pairs with at least this many queries (default 10).
+        min_span_days: Only pairs spanning at least this many days (default 1).
+        client_ip: Restrict to one client IP (e.g. "192.168.5.55").
+        domain: Restrict to a substring match on the domain (e.g. "amazon").
+        blocked_only: True to return only pairs with blocked queries.
+        limit: Maximum pairs to return (default 50, max 500).
+
+    Returns:
+        List of beacon records, each with client_ip, domain, count, blocked,
+        allowed, first_seen, last_seen, span_days, presence_ratio,
+        median_gap_seconds, min_gap_seconds, max_gap_seconds.
+    """
+    return await _beacon_get(
+        "/beacons",
+        days=days,
+        min_count=min_count,
+        min_span_days=min_span_days,
+        client_ip=client_ip,
+        domain=domain,
+        blocked_only=blocked_only,
+        limit=limit,
+    )
+
+
+@mcp.tool()
+async def get_dns_callers(
+    days: int = 30,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Per-client DNS query rollup over weeks — who queries how much, and how
+    consistently.
+
+    Aggregates the Pi-hole FTL long-term query log per client: total queries,
+    unique domains, blocked count, block ratio, first/last seen, span in days,
+    and presence ratio (fraction of the span's hours the client was active).
+    Sorted by query volume. The "who is the noisiest DNS caller" view; combine
+    with get_dns_beacons to drill into what a noisy client is phoning.
+
+    Note: only clients that use Pi-hole as their resolver appear (the IoT VLAN
+    at this homelab).
+
+    Args:
+        days: Lookback window in days (1-91, default 30).
+        limit: Maximum clients to return (default 50, max 200).
+
+    Returns:
+        List of client records: client_ip, queries, unique_domains, blocked,
+        block_ratio, first_seen, last_seen, span_days, presence_ratio.
+    """
+    return await _beacon_get("/callers", days=days, limit=limit)
 
 
 @mcp.tool()

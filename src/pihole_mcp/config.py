@@ -23,6 +23,13 @@ class Settings(MCPBaseSettings):
         validation_alias="PIHOLE_API_PASSWORD",
     )
 
+    beacon_url: str = Field(
+        default="",
+        description="Base URL of the pihole-beacon-api sidecar (read-only FTL "
+        "long-term query analysis). Empty disables the beacon tools.",
+        validation_alias="PIHOLE_BEACON_URL",
+    )
+
     request_timeout: float = Field(
         default=15.0,
         description="HTTP request timeout in seconds",
